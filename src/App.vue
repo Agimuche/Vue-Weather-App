@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import Weather3D from './components/Weather3D.vue'
-import { searchCity, getWeather, mapWeatherCode, type CurrentWeather, type GeoResult } from './services/weather'
+import { searchCity, getWeather, getDailyForecast, mapWeatherCode, type CurrentWeather, type GeoResult, type DailyWeather } from './services/weather'
 
 const query = ref('')
 const place = ref<GeoResult | null>(null)
 const weather = ref<CurrentWeather | null>(null)
+const forecast = ref<DailyWeather[] | null>(null)
 const condition = ref<'clear' | 'clouds' | 'rain' | 'snow' | 'fog'>('clear')
 const lastUpdated = ref<number | null>(null)
 let refreshId: number | null = null
@@ -31,6 +31,19 @@ const icon = computed(() => {
   if (condition.value === 'snow') return '❄️'
   return '🌫️'
 })
+
+function formatDay(s?: number) {
+  if (!s) return ''
+  return new Date(s * 1000).toLocaleDateString([], { weekday: 'short' })
+}
+function iconFor(code: number) {
+  const c = mapWeatherCode(code)
+  if (c === 'clear') return '☀️'
+  if (c === 'clouds') return '☁️'
+  if (c === 'rain') return '🌧️'
+  if (c === 'snow') return '❄️'
+  return '🌫️'
+}
 
 async function onSearch() {
   if (!query.value.trim()) return
@@ -67,6 +80,8 @@ async function refreshWeather() {
   } else {
     errorMessage.value = 'Weather unavailable. Check API key configuration.'
   }
+  const f = await getDailyForecast(place.value.latitude, place.value.longitude)
+  forecast.value = f
 }
 
 function startAutoRefresh() {
@@ -107,6 +122,16 @@ onBeforeUnmount(() => { if (refreshId) clearInterval(refreshId) })
             <div class="bg-slate-800/60 rounded-md p-3"><span class="text-slate-400">Sunset:</span> <span class="text-white">{{ weather.sunset ? formatTime(weather.sunset) : '—' }}</span></div>
             <div class="bg-slate-800/60 rounded-md p-3"><span class="text-slate-400">Source:</span> <span class="text-white">{{ weather.source }}</span></div>
             <div class="bg-slate-800/60 rounded-md p-3 col-span-2"><span class="text-slate-400">Last updated:</span> <span class="text-white">{{ lastUpdated ? formatTime(lastUpdated) : '—' }}</span></div>
+          </div>
+          <div v-if="forecast && forecast.length" class="mt-6">
+            <div class="text-left text-slate-300 mb-2">7‑day forecast</div>
+            <div class="grid grid-cols-7 gap-2">
+              <div v-for="d in forecast" :key="d.date" class="bg-slate-800/60 rounded-md p-2 text-center">
+                <div class="text-sm text-slate-300">{{ formatDay(d.date) }}</div>
+                <div class="text-xl">{{ iconFor(d.code) }}</div>
+                <div class="text-xs text-slate-200">{{ Math.round(isImperial ? toF(d.tmax) as number : d.tmax) }}° / {{ Math.round(isImperial ? toF(d.tmin) as number : d.tmin) }}°</div>
+              </div>
+            </div>
           </div>
         </div>
         <div v-else class="text-slate-400">Search a city to view weather</div>

@@ -20,6 +20,14 @@ export type CurrentWeather = {
   source: 'openweather' | 'open-meteo'
 };
 
+export type DailyWeather = {
+  date: number
+  code: number
+  tmax: number
+  tmin: number
+  source: 'openweather' | 'open-meteo'
+};
+
 const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY as string | undefined
 
 export async function searchCity(name: string): Promise<GeoResult | null> {
@@ -157,6 +165,45 @@ export async function getWeather(lat: number, lon: number): Promise<CurrentWeath
     timestamp,
     source: 'open-meteo',
   }
+}
+
+export async function getDailyForecast(lat: number, lon: number): Promise<DailyWeather[]> {
+  if (API_KEY) {
+    try {
+      const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`
+      const res = await fetch(url)
+      if (res.ok) {
+        const data = await res.json()
+        const daily = Array.isArray(data?.daily) ? data.daily : []
+        return daily.slice(0, 7).map((d: any) => ({
+          date: d.dt,
+          code: d.weather?.[0]?.id ?? 800,
+          tmax: d.temp?.max ?? 0,
+          tmin: d.temp?.min ?? 0,
+          source: 'openweather',
+        }))
+      }
+    } catch {}
+  }
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`
+  const res = await fetch(url)
+  if (!res.ok) return []
+  const data = await res.json()
+  const t = Array.isArray(data?.daily?.time) ? data.daily.time : []
+  const codes = Array.isArray(data?.daily?.weather_code) ? data.daily.weather_code : []
+  const tmax = Array.isArray(data?.daily?.temperature_2m_max) ? data.daily.temperature_2m_max : []
+  const tmin = Array.isArray(data?.daily?.temperature_2m_min) ? data.daily.temperature_2m_min : []
+  const out: DailyWeather[] = []
+  for (let i = 0; i < t.length && i < 7; i++) {
+    out.push({
+      date: Math.floor(Date.parse(t[i]) / 1000),
+      code: codes[i] ?? 0,
+      tmax: tmax[i] ?? 0,
+      tmin: tmin[i] ?? 0,
+      source: 'open-meteo',
+    })
+  }
+  return out
 }
 
 function describeOpenMeteoCode(code: number): string | undefined {
