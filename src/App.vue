@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { onBeforeUnmount } from 'vue'
 import Weather3D from './components/Weather3D.vue'
 import { searchCity, getWeather, mapWeatherCode, type CurrentWeather, type GeoResult } from './services/weather'
@@ -10,11 +10,6 @@ const weather = ref<CurrentWeather | null>(null)
 const condition = ref<'clear' | 'clouds' | 'rain' | 'snow' | 'fog'>('clear')
 const lastUpdated = ref<number | null>(null)
 let refreshId: number | null = null
-const wind = computed(() => {
-  const w = weather.value?.windSpeed
-  if (w == null) return 0
-  return weather.value?.source === 'open-meteo' ? w / 3.6 : w
-})
 
 async function onSearch() {
   if (!query.value.trim()) return
@@ -31,9 +26,10 @@ function formatTime(s?: number) {
 
 async function refreshWeather() {
   if (!place.value) return
-  weather.value = await getWeather(place.value.latitude, place.value.longitude)
-  if (weather.value) {
-    condition.value = mapWeatherCode(weather.value.weatherCode)
+  const w = await getWeather(place.value.latitude, place.value.longitude)
+  if (w) {
+    weather.value = w
+    condition.value = mapWeatherCode(w.weatherCode)
     lastUpdated.value = Math.floor(Date.now() / 1000)
   }
 }
@@ -76,7 +72,7 @@ onBeforeUnmount(() => { if (refreshId) clearInterval(refreshId) })
         <div v-else class="text-slate-400">Search a city to view weather</div>
       </div>
       <div class="flex justify-center md:justify-end">
-        <Weather3D :condition="condition" :wind="wind" />
+        <Weather3D :condition="condition" />
       </div>
     </div>
   </div>

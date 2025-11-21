@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import * as THREE from 'three'
 
-const props = defineProps<{ condition: 'clear' | 'clouds' | 'rain' | 'snow' | 'fog', wind?: number }>()
+const props = defineProps<{ condition: 'clear' | 'clouds' | 'rain' | 'snow' | 'fog' }>()
 
 const container = ref<HTMLDivElement | null>(null)
 let scene: THREE.Scene
@@ -11,10 +11,7 @@ let renderer: THREE.WebGLRenderer
 let animId = 0
 
 let particles: THREE.Points | null = null
-let cloudGroup: THREE.Group | null = null
-let sun: THREE.Mesh | null = null
-let angle = 0
-let windFactor = 0
+ 
 
 function setup() {
   scene = new THREE.Scene()
@@ -32,11 +29,7 @@ function setup() {
   const sphere = new THREE.Mesh(geometry, material)
   sphere.position.y = 0.5
   scene.add(sphere)
-  const sunGeo = new THREE.SphereGeometry(0.2, 16, 16)
-  const sunMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.8 })
-  sun = new THREE.Mesh(sunGeo, sunMat)
-  sun.position.set(1.5, 1.2, 0)
-  scene.add(sun)
+ 
 
   renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(window.devicePixelRatio)
@@ -54,11 +47,7 @@ function updateCondition(c: 'clear' | 'clouds' | 'rain' | 'snow' | 'fog') {
     ;(particles.material as THREE.Material).dispose()
     particles = null
   }
-  if (cloudGroup) {
-    scene.remove(cloudGroup)
-    cloudGroup = null
-  }
-  windFactor = Math.max(0, Math.min(props.wind ?? 0, 20))
+ 
 
   if (c === 'clear') {
     scene.background = new THREE.Color(0x87ceeb)
@@ -66,13 +55,11 @@ function updateCondition(c: 'clear' | 'clouds' | 'rain' | 'snow' | 'fog') {
     scene.background = new THREE.Color(0xb0c4de)
     const cloudGeo = new THREE.SphereGeometry(0.2, 8, 8)
     const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff })
-    cloudGroup = new THREE.Group()
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 10; i++) {
       const m = new THREE.Mesh(cloudGeo, cloudMat)
-      m.position.set(Math.random() * 4 - 2, 1 + Math.random() * 0.5, Math.random() * 2 - 1)
-      cloudGroup.add(m)
+      m.position.set(Math.random() * 2 - 1, 1 + Math.random() * 0.5, Math.random() * 2 - 1)
+      scene.add(m)
     }
-    scene.add(cloudGroup)
   } else if (c === 'rain' || c === 'snow') {
     scene.background = new THREE.Color(c === 'rain' ? 0x4a5568 : 0xe2e8f0)
     const count = 500
@@ -101,25 +88,9 @@ function animate() {
       let y = arr.getY(i)
       y -= c === 'rain' ? 0.05 : 0.015
       if (y < 0) y = 3
-      let x = arr.getX(i)
-      x += windFactor * 0.01
-      if (x > 2) x = -2
-      arr.setX(i, x)
       arr.setY(i, y)
     }
     arr.needsUpdate = true
-  }
-  if (cloudGroup) {
-    cloudGroup.children.forEach((m) => {
-      m.position.x += 0.01 + windFactor * 0.005
-      if (m.position.x > 2.2) m.position.x = -2.2
-    })
-  }
-  if (sun) {
-    angle += 0.01
-    const r = 1.5
-    sun.position.x = Math.cos(angle) * r
-    sun.position.y = 1 + Math.sin(angle) * 0.5
   }
   renderer.render(scene, camera)
 }
