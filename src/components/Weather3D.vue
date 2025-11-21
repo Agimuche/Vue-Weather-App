@@ -17,6 +17,15 @@ let animId = 0
 let particles: THREE.Object3D | null = null
 let stars: THREE.Points | null = null
 
+function setSizeFromContainer() {
+  const el = container.value
+  const w = el?.clientWidth ?? 300
+  const h = el?.clientHeight ?? 300
+  renderer.setSize(w, h)
+  camera.aspect = w / h
+  camera.updateProjectionMatrix()
+}
+
 function setup() {
   scene = new THREE.Scene()
   camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100)
@@ -36,7 +45,7 @@ function setup() {
 
   renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(window.devicePixelRatio)
-  renderer.setSize(300, 300)
+  setSizeFromContainer()
 
   composer = new EffectComposer(renderer)
   composer.addPass(new RenderPass(scene, camera))
@@ -44,6 +53,7 @@ function setup() {
   composer.addPass(bloom)
 
   if (container.value) container.value.appendChild(renderer.domElement)
+  window.addEventListener('resize', setSizeFromContainer)
   updateCondition(props.condition)
   animate()
 }
@@ -87,6 +97,7 @@ onMounted(setup)
 onBeforeUnmount(() => {
   cancelAnimationFrame(animId)
   renderer?.dispose()
+  window.removeEventListener('resize', setSizeFromContainer)
 })
 
 function makeCloudSprites(): THREE.Group {
@@ -223,7 +234,7 @@ function circleTexture(): THREE.Texture {
 </script>
 
 <template>
-  <div ref="container" class="w-[300px] h-[300px] rounded-xl overflow-hidden shadow-lg"></div>
+  <div ref="container" class="w-[220px] h-[220px] sm:w-[280px] sm:h-[280px] md:w-[360px] md:h-[360px] lg:w-[420px] lg:h-[420px] rounded-xl overflow-hidden shadow-lg"></div>
 </template>
 
 <style scoped>

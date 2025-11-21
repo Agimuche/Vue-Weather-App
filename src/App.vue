@@ -32,6 +32,25 @@ const icon = computed(() => {
   return '🌫️'
 })
 
+const tiltX = ref(0)
+const tiltY = ref(0)
+function onMove(e: MouseEvent) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const x = (e.clientX - rect.left) / rect.width
+  const y = (e.clientY - rect.top) / rect.height
+  tiltY.value = (x - 0.5) * 10
+  tiltX.value = (0.5 - y) * 10
+}
+function resetTilt() { tiltX.value = 0; tiltY.value = 0 }
+const cardStyle = computed(() => ({
+  transform: `perspective(800px) rotateX(${tiltX.value}deg) rotateY(${tiltY.value}deg)`,
+  transition: 'transform 120ms ease-out',
+}))
+const sceneStyle = computed(() => ({
+  transform: `perspective(800px) rotateX(${tiltX.value * 0.6}deg) rotateY(${tiltY.value * 0.6}deg)`,
+  transition: 'transform 120ms ease-out',
+}))
+
 function formatDay(s?: number) {
   if (!s) return ''
   return new Date(s * 1000).toLocaleDateString([], { weekday: 'short' })
@@ -93,8 +112,8 @@ onBeforeUnmount(() => { if (refreshId) clearInterval(refreshId) })
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6">
-    <div class="max-w-3xl w-full grid md:grid-cols-2 gap-8 items-center">
+  <div class="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6 overflow-hidden animated-bg" @mousemove="onMove" @mouseleave="resetTilt">
+    <div class="max-w-4xl w-full grid md:grid-cols-2 gap-10 items-center">
       <div>
         <h1 class="text-3xl font-bold mb-4">3D Weather</h1>
         <div class="flex gap-2 mb-4">
@@ -107,7 +126,7 @@ onBeforeUnmount(() => { if (refreshId) clearInterval(refreshId) })
           </div>
         </div>
         <div v-if="errorMessage" class="mb-4 rounded-md border border-red-500 bg-red-600/20 text-red-200 px-3 py-2">{{ errorMessage }}</div>
-        <div v-if="place && weather" class="space-y-4">
+        <div v-if="place && weather" class="space-y-4 will-change-transform" :style="cardStyle">
           <p class="text-lg">{{ place.name }}<span v-if="place.country">, {{ place.country }}</span></p>
           <p class="text-5xl font-semibold">{{ Math.round(isImperial ? toF(weather.temperature) as number : (weather.temperature ?? 0)) }}°{{ isImperial ? 'F' : 'C' }}</p>
           <p class="capitalize text-xl">{{ icon }} {{ weather.description ?? condition }}</p>
@@ -136,7 +155,7 @@ onBeforeUnmount(() => { if (refreshId) clearInterval(refreshId) })
         </div>
         <div v-else class="text-slate-400">Search a city to view weather</div>
       </div>
-      <div class="flex justify-center md:justify-end">
+      <div class="flex justify-center md:justify-end will-change-transform" :style="sceneStyle">
         <Weather3D :condition="condition" :wind="weather?.windSpeed" :code="weather?.weatherCode" />
       </div>
     </div>
